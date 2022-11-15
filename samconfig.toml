@@ -1,0 +1,28 @@
+version = 0.1
+[dev]
+[dev.deploy]
+[dev.deploy.parameters]
+stack_name = "Client-Deliverable-Dev"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-tyxj6zxkry0t"
+s3_prefix = "Client-Deliverable-Dev"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "StackTagName=\"client-deliverable\" EnvironmentTagName=\"dev\" EnvironmentAPIGatewayStageName=\"dev\" VaultEnv=\"dev\" VaultAuthRole=\"agileplatform-nonprod-iam\" BubbleUrl=\"https://fast-survey.cbre.io/version-development-branch/api/1.1/\""
+#securityIdGroups = "sg-0e30b5be39c11e3f4"
+#subnetId1 = "subnet-09bbde07fd01959fb"
+#subnetId2 = "subnet-09f5d8c0697ff0ae5"
+
+[prod]
+[prod.deploy]
+[prod.deploy.parameters]
+stack_name = "client-deliverable-prod"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-xx6hgofa1gid"
+s3_prefix = "client-deliverable-prod"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "StackTagName=\"client-deliverable\" EnvironmentTagName=\"prod\" EnvironmentAPIGatewayStageName=\"prod\" VaultEnv=\"prod\" VaultAuthRole=\"agileplatform-prod-iam\" BubbleUrl=\"https://fast-survey.cbre.io/api/1.1/\""
+securityIdGroups = ""
+subnetId1 = ""
+subnetId2 = ""
