@@ -1,0 +1,240 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: java11
+    MemorySize: 3008
+    Timeout: 30
+    Layers:
+      - !Sub arn:aws:lambda:${AWS::Region}:634166935893:layer:vault-lambda-extension:12
+    Environment:
+      Variables:
+        ENVIRONMENT: !Sub ${EnvironmentTagName}
+        VAULT_ADDR: https://lockbox.gcso.cbre.com
+        VAULT_ENV: !Sub ${VaultEnv}
+        VAULT_AUTH_PROVIDER: aws
+        VAULT_AUTH_ROLE: !Sub ${VaultAuthRole}
+        VAULT_IAM_SERVER_ID: lockbox.gcso.cbre.com
+
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Auth:
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          UsagePlanName: !Sub clientdeliverable-api-usage-plan-${EnvironmentTagName}
+      Name: !Sub clientdeliverable-api-${EnvironmentTagName}
+      StageName: !Ref EnvironmentAPIGatewayStageName
+      DefinitionBody:
+        swagger: '2.0'
+        info: {}
+        securityDefinitions:
+          apiKeyAuth:
+            type: "apiKey"
+            name: "x-api-key"
+            in: "header"
+        paths:
+         
+          /getBubbleSurveys:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getBubbleSurveysFunc.Arn}/invocations
+              responses: {}
+              security:
+                - apiKeyAuth: []
+          /getProviderOption:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getProviderOptionFunc.Arn}/invocations
+              responses: {}
+              security:
+                - apiKeyAuth: []
+          /updateBubbleOption:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${updateBubbleOptionFunc.Arn}/invocations
+              responses: {}
+              security:
+                - apiKeyAuth: []
+          /sendMail:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${sendMailFunc.Arn}/invocations
+              responses: {}
+              security:
+                - apiKeyAuth: []
+          /updatedealinfo:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${updateDealInfoFunc.Arn}/invocations
+              responses: {}
+              security:
+                - apiKeyAuth: []
+          /updateBubbleSurvey:
+            put:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${updateBubbleSurveyFunc.Arn}/invocations
+              responses: {}
+              security:
+                - apiKeyAuth: []
+
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        AllowHeaders: '''Authorization,X-Api-Key,Content-Type'''
+        AllowOrigin: '''*'''
+  
+  getBubbleSurveysFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-getBubbleSurveysFunc
+      Environment:
+        Variables:
+          BUBBLE_URL: !Sub ${BubbleUrl}wf/get-Deliverables-data
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: getBubbleSurveysFunc
+      CodeUri: src/ClientDeliverable
+      Handler: com.cbre.agile.survey.function.GetSurveyFunction::handleRequest
+      Role: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CBREAgileFastLambdaExecutionRole
+      Events:
+        GetBubbleSurveysPost:
+          Type: Api
+          Properties:
+            Path: /getBubbleSurveys
+            Method: POST
+            RestApiId: !Ref Api
+  getProviderOptionFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-getProviderOptionFunc
+      Environment:
+        Variables:
+          BUBBLE_PROVIDER_URL: !Sub ${BubbleUrl}wf/get-preview-data
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: getProviderOptionFunc
+      CodeUri: src/ProviderPreview
+      Handler: com.cbre.agile.provider.function.GetProviderOptionFunction::handleRequest
+      Role: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CBREAgileFastLambdaExecutionRole
+      Events:
+        GetProviderOptionPost:
+          Type: Api
+          Properties:
+            Path: /getProviderOption
+            Method: POST
+            RestApiId: !Ref Api
+  updateBubbleOptionFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-updateBubbleOptionFunc
+      Environment:
+        Variables:
+          BUBBLE_PROVIDER_URL: !Sub ${BubbleUrl}obj/option
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: updateBubbleOptionFunc
+      CodeUri: src/ProviderPreview
+      Handler: com.cbre.agile.provider.function.UpdateProviderOptionFunction::handleRequest
+      Role: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CBREAgileFastLambdaExecutionRole
+      Events:
+        UpdateBubbleOptionPut:
+          Type: Api
+          Properties:
+            Path: /updateBubbleOption
+            Method: PUT
+            RestApiId: !Ref Api
+  sendMailFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-sendMailFunc
+      Environment:
+        Variables:
+          From_Mail: CBRE_agile@cbre.com
+          From_Name: CBRE Agile Team
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: sendMailFunc
+      CodeUri: src/SendMail
+      Handler: com.cbre.agile.sendmail.SendMailHandler::handleRequest
+      Role: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CBREAgileFastLambdaExecutionRole
+      Events:
+        GetProviderOptionPost:
+          Type: Api
+          Properties:
+            Path: /sendMail
+            Method: POST
+            RestApiId: !Ref Api
+  updateDealInfoFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-updateDealInfoFunc
+      Environment:
+        Variables:
+          AIRTABLE_API_URL: https://api.airtable.com/v0/appkX69hBCJ7jRAOQ/Deals
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: updateDealInfoFunc
+      CodeUri: src/UpdateDealsInfo
+      Handler: com.cbre.agile.updatedelasinfo.function.UpdateDealsHandler::handleRequest
+      Role: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CBREAgileFastLambdaExecutionRole
+      Events:
+        UpdateDealInfoPut:
+          Type: Api
+          Properties:
+            Path: /updatedealinfo
+            Method: PUT
+            RestApiId: !Ref Api
+  updateBubbleSurveyFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-updateBubbleSurveyFunc
+      Environment:
+        Variables:
+          BUBBLE_SURVEY_URL: !Sub ${BubbleUrl}obj/survey
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: updateBubbleSurveyFunc
+      CodeUri: src/UpdateSurveyDetails
+      Handler: com.cbre.agile.updatesurveydetails.function.UpdateSurveyHandler::handleRequest
+      Role: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/CBREAgileFastLambdaExecutionRole
+      Events:
+        UpdateBubbleSurveyPut:
+          Type: Api
+          Properties:
+            Path: /updateBubbleSurvey
+            Method: PUT
+            RestApiId: !Ref Api
+       
+Parameters:
+  StackTagName:
+    Type: String
+    Description: Stack Name (injected by Stackery at deployment time)
+  EnvironmentTagName:
+    Type: String
+    Description: Environment Name (injected by Stackery at deployment time)
+  EnvironmentAPIGatewayStageName:
+    Type: String
+    Description: Environment name used for API Gateway Stage names (injected by Stackery at deployment time)
+  VaultEnv:
+    Type: String
+    Description: Vault environment to be used
+  VaultAuthRole:
+    Type: String
+    Description: Role used to authenticate with vault
+  BubbleUrl:
+    Type: String
+    Description: Bubble API URL
